@@ -1,0 +1,177 @@
+
+var DEFAULTS = {
+  'Chrome': 50, // Includes Chrome for mobile devices
+  'Edge': 39,
+  'Safari': 10,
+  'Mobile Safari': 10,
+  'Firefox': 50,
+  'Yandex': 16,
+  'Opera': 47,
+  'IE': false
+}
+
+var EDGEHTML_VS_EDGE_VERSIONS = {
+  12: 0.1,
+  13: 21,
+  14: 31,
+  15: 39,
+  16: 41
+}
+var outdated = function(options) {
+  var main = function () {
+    // Despite the docs, UA needs to be provided to constructor explicitly:
+    // https://github.com/faisalman/ua-parser-js/issues/90
+    try {
+      var parsedUserAgent = new UAParser(window.navigator.userAgent).getResult()
+    } catch (e) {
+      console.log(e)
+    }
+    // Variable definition (before ajax)
+    var outdatedUI = document.getElementById('outdated')
+    options = options || {}
+
+    // Set default options
+    // var browserSupport = options.browserSupport || DEFAULTS
+    // CSS property to check for. You may also like 'borderSpacing', 'boxShadow', 'transform', 'borderImage'
+    var	requiredCssProperty = options.requiredCssProperty || false
+
+    var isAndroid = parsedUserAgent.os.name === 'Android'
+    var isAndroidButNotChrome
+    if (options.requireChromeOnAndroid) {
+      isAndroidButNotChrome = (isAndroid) && (parsedUserAgent.browser.name !== 'Chrome')
+    }
+
+    var updateSource = 'web'
+    if (isAndroid) {
+      updateSource = 'googlePlay'
+    }
+    if (parsedUserAgent.os.name === 'iOS') {
+      updateSource = 'appStore'
+    }
+
+    var done = true
+
+    var changeOpacity = function (opacityValue) {
+      outdatedUI.style.opacity = opacityValue / 100
+      outdatedUI.style.filter = 'alpha(opacity=' + opacityValue + ')'
+    }
+
+    var fadeIn = function (opacityValue) {
+      changeOpacity(opacityValue)
+      if (opacityValue === 1) {
+        outdatedUI.style.display = 'block'
+      }
+      if (opacityValue === 100) {
+        done = true
+      }
+    }
+
+    var isBrowserOutOfDate = function () {
+      var browserName = parsedUserAgent.browser.name
+      // var browserMajorVersion = parsedUserAgent.browser.major
+      if (browserName === 'Edge') {
+        browserMajorVersion = EDGEHTML_VS_EDGE_VERSIONS[browserMajorVersion]
+      }
+      var isOutOfDate = false
+      // if (!browserSupport[browserName]) {
+      //   isOutOfDate = true
+      // } else if (browserMajorVersion < browserSupport[browserName]) {
+      //   isOutOfDate = true
+      // }
+      if (!browserName || browserName === 'IE') {
+        isOutOfDate = true
+      }
+      return isOutOfDate
+    }
+
+    // Returns true if a browser supports a css3 property
+    var isPropertySupported = function (prop) {
+      if (!prop) {
+        return true
+      }
+      var div = document.createElement('div')
+      var vendorPrefixes = ['khtml', 'ms', 'o', 'moz', 'webkit']
+      var count = vendorPrefixes.length
+
+      if (div.style[prop]) {
+        return true
+      }
+
+      prop = prop.replace(/^[a-z]/, function (val) {
+        return val.toUpperCase()
+      })
+
+      while (count--) {
+        if (div.style[vendorPrefixes[count] + prop]) {
+          return true
+        }
+      }
+      return false
+    }
+
+    var makeFadeInFunction = function(opacityValue) {
+      return function () {
+        fadeIn(opacityValue)
+      }
+    }
+
+    var displayMessage = function() {
+      console.log('try to show outdated dialog')
+      try {
+        var ffLink = document.getElementsByClassName('firefox-link')[0]
+        var chromeLink = document.getElementsByClassName('chrome-link')[0]
+        var operaLink = document.getElementsByClassName('opera-link')[0]
+        switch (updateSource) {
+          case 'googlePlay':
+            chromeLink.href = 'https://play.google.com/store/apps/details?id=com.android.chrome'
+            ffLink.href = 'https://play.google.com/store/apps/details?id=org.mozilla.firefox'
+            operaLink.href = 'https://play.google.com/store/apps/details?id=com.opera.browser'
+            break
+          case 'appStore':
+            chromeLink.href = 'https://itunes.apple.com/us/app/google-chrome/id535886823'
+            ffLink.href = 'https://itunes.apple.com/us/app/firefox-web-browser/id989804926'
+            operaLink.href = 'https://itunes.apple.com/ru/app/%D0%B2%D0%B5%D0%B1-%D0%B1%D1%80%D0%B0%D1%83%D0%B7%D0%B5%D1%80-opera/id363729560?mt=8'
+            break
+          default:
+            break
+        }
+        try { outdatedUI.style.cssText = 'display: block;' } catch (e) { console.log(e) }
+        try { outdatedUI.setAttribute('display', 'block') } catch (e) { console.log(e) }
+        try { outdatedUI.style.display = 'block' } catch (e) { console.log(e) }
+      } catch (e) {
+        console.log(e)
+      }
+    }
+
+    // Check if browser is supported
+    if (isBrowserOutOfDate() || !isPropertySupported(requiredCssProperty) || isAndroidButNotChrome) {
+      // This is an outdated browser
+      if (done && outdatedUI.style.opacity !== '1') {
+        done = false
+
+        for (var opacity = 1; opacity <= 100; opacity++) {
+          setTimeout(makeFadeInFunction(opacity), opacity * 8)
+        }
+      }
+
+      // var insertContentHere = document.getElementById('outdated')
+      // insertContentHere.innerHTML = getmessage(language)
+      displayMessage()
+    }
+  }
+
+  // Load main when DOM ready.
+  var oldOnload = window.onload
+  if (typeof window.onload !== 'function') {
+    window.onload = main
+  } else {
+    window.onload = function () {
+      if (oldOnload) {
+        oldOnload()
+      }
+      main()
+    }
+  }
+}
+
+outdated(DEFAULTS)
